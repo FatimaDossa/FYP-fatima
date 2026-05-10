@@ -2,6 +2,10 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
+    build-essential \
+    cmake \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
