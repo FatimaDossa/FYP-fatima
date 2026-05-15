@@ -1,0 +1,40 @@
+# Git / local dev
+.git
+.gitignore
+.env
+.env.*
+!.env.railway.example
+venv/
+venvv/
+venv_ocr/
+venvpython/
+__pycache__/
+*.pyc
+.DS_Store
+.deepeval/
+pip_cache/
+.vscode/
+
+# Frontend (deploy separately)
+frontend/
+
+# Docs / report / misc
+Kaavish_Report/
+Documentation/
+misc/
+evaluation_results/
+Test_Images/
+Test_cases*.json
+test_rag_evaluation.py
+WORKFLOW_DOCUMENTATION.md
+README.md
+
+# Large local-only assets (KB lives in Supabase for production)
+Llama-3.2-3B-Instruct-Q4_K_M.gguf
+Al Khidmat Knowledge Base.zip
+Al Khidmat Knowledge Base/
+alkhidmat_index/
+backend_env/
+
+# Secrets
+api/fypp-ea6b9-firebase-adminsdk-*.json

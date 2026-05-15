@@ -820,7 +820,7 @@ class DomainClassifier:
         if DomainClassifier._domain_embeddings_cache is not None:
             return
         if os.environ.get('BATCH_MODE') != 'True':
-            print("\n🔄 Initializing domain embeddings...")
+            print("\n[INIT] Initializing domain embeddings...")
 
         model = get_embedder()
         DomainClassifier._embedding_model = model
@@ -832,11 +832,11 @@ class DomainClassifier:
             centroid = np.mean(embeddings, axis=0)
             domain_embeddings[domain] = centroid
             if os.environ.get('BATCH_MODE') != 'True':
-                print(f" ✓ {domain}: {len(queries)} anchors → centroid computed")
+                print(f" [OK] {domain}: {len(queries)} anchors -> centroid computed")
 
         DomainClassifier._domain_embeddings_cache = domain_embeddings
         if os.environ.get('BATCH_MODE') != 'True':
-            print("✅ Domain embeddings initialized!\n")
+            print("[OK] Domain embeddings initialized!\n")
 
     @staticmethod
     def classify_domain(query: str) -> Dict[str, any]:

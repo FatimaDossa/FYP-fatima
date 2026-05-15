@@ -279,7 +279,7 @@
 #             print(f"  KB update check skipped (last checked {days_since_check} day(s) ago, next check in {days_remaining} day(s))")
 #             return False
 #     except Exception as e:
-#         print(f"  ⚠️ Error reading KB check timestamp: {e}")
+#         print(f"  [WARN] Error reading KB check timestamp: {e}")
 #         # On error, allow check to proceed
 #         return True
 
@@ -302,7 +302,7 @@
 #             doc_count = result.count if hasattr(result, 'count') else len(result.data) if result.data else 0
             
 #             if doc_count > 0:
-#                 print(f"✓ Knowledge base found in Supabase ({doc_count} documents).")
+#                 print(f"[OK] Knowledge base found in Supabase ({doc_count} documents).")
                 
 #                 # Only check for updates on a weekly basis
 #                 if _should_check_for_updates():
@@ -311,13 +311,13 @@
 #                     try:
 #                         stats = rag_module.add_documents_from_zip_incremental(ZIP_PATH, reindex_existing=False)
 #                         if stats["added"] > 0:
-#                             print(f"✓ Added {stats['added']} new document(s) to knowledge base")
+#                             print(f"[OK] Added {stats['added']} new document(s) to knowledge base")
 #                         if stats["skipped"] > 0:
 #                             print(f"  Skipped {stats['skipped']} existing document(s)")
 #                         if stats["failed"] > 0:
-#                             print(f"⚠️ Failed to add {stats['failed']} document(s)")
+#                             print(f"[WARN] Failed to add {stats['failed']} document(s)")
 #                     except Exception as e:
-#                         print(f"⚠️ Error during incremental update: {e}")
+#                         print(f"[WARN] Error during incremental update: {e}")
 #                         print("   Knowledge base exists, but new documents may not have been added.")
 #                 else:
 #                     print(f"  KB update check skipped (weekly schedule)")
@@ -335,7 +335,7 @@
 #     try:
 #         # Build from scratch (not incremental since there's nothing to increment)
 #         rag_module.build_alkhidmat_rag(ZIP_PATH, clear_existing=False, incremental=False)
-#         print(f"✓ Knowledge base built successfully in Supabase")
+#         print(f"[OK] Knowledge base built successfully in Supabase")
 #         # Update timestamp after initial build
 #         timestamp_file = Path(".kb_last_check.json")
 #         timestamp_file.write_text(json.dumps({
@@ -358,7 +358,7 @@
 #     try:
 #         from RAG_supabase import DomainClassifier
 #         DomainClassifier.initialize_domain_embeddings()
-#         print("[STARTUP] ✓ Domain embeddings ready", flush=True)
+#         print("[STARTUP] [OK] Domain embeddings ready", flush=True)
 #     except Exception as e:
 #         print(f"[STARTUP]   Could not pre-initialize domain embeddings: {e}", flush=True)
     
@@ -367,7 +367,7 @@
 #     try:
 #         from RAG_supabase import get_embedder
 #         get_embedder()
-#         print("[STARTUP] ✓ Embedding model ready", flush=True)
+#         print("[STARTUP] [OK] Embedding model ready", flush=True)
 #     except Exception as e:
 #         print(f"[STARTUP]   Could not pre-load embedding model: {e}", flush=True)
 
@@ -1674,21 +1674,34 @@ app.add_middleware(
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 
-fb_svc_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
-# Fallback to the specific file provided if env var is missing or invalid
-if not fb_svc_path or not os.path.exists(fb_svc_path):
-    potential_path = os.path.join(os.path.dirname(__file__), "fypp-ea6b9-firebase-adminsdk-fbsvc-1f21963d6d.json")
-    if os.path.exists(potential_path):
-        fb_svc_path = potential_path
-
-if fb_svc_path and os.path.exists(fb_svc_path):
+_fb_initialized = False
+fb_svc_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+if fb_svc_json:
     try:
-        cred = credentials.Certificate(fb_svc_path)
+        cred = credentials.Certificate(json.loads(fb_svc_json))
         firebase_admin.initialize_app(cred)
-        print(f"[FIREBASE] Initialized with service account: {fb_svc_path}")
+        _fb_initialized = True
+        print("[FIREBASE] Initialized from FIREBASE_SERVICE_ACCOUNT_JSON")
     except Exception as e:
-        print(f"[FIREBASE] Initialization error: {e}")
-else:
+        print(f"[FIREBASE] Initialization error (JSON env): {e}")
+
+if not _fb_initialized:
+    fb_svc_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+    if not fb_svc_path or not os.path.exists(fb_svc_path):
+        potential_path = os.path.join(os.path.dirname(__file__), "fypp-ea6b9-firebase-adminsdk-fbsvc-1f21963d6d.json")
+        if os.path.exists(potential_path):
+            fb_svc_path = potential_path
+
+    if fb_svc_path and os.path.exists(fb_svc_path):
+        try:
+            cred = credentials.Certificate(fb_svc_path)
+            firebase_admin.initialize_app(cred)
+            _fb_initialized = True
+            print(f"[FIREBASE] Initialized with service account: {fb_svc_path}")
+        except Exception as e:
+            print(f"[FIREBASE] Initialization error: {e}")
+
+if not _fb_initialized:
     print("[FIREBASE] SERVICE ACCOUNT NOT FOUND. Firebase login will be disabled.")
 
 # In-memory session storage (in production, use Redis or JWT tokens)
@@ -1943,48 +1956,42 @@ def _should_check_for_updates() -> bool:
             print(f"  KB update check skipped (last checked {days_since_check} day(s) ago, next check in {days_remaining} day(s))")
             return False
     except Exception as e:
-        print(f"  ⚠️ Error reading KB check timestamp: {e}")
+        print(f"  [WARN] Error reading KB check timestamp: {e}")
         # On error, allow check to proceed
         return True
 
 def _ensure_index_exists():
     """Check if knowledge base exists in Supabase, build if missing, update incrementally if exists."""
     from supabase_client import get_supabase_client
-    
-    # Check if ZIP file exists
-    if not Path(ZIP_PATH).exists():
-        print(f"  ZIP file not found at {ZIP_PATH}")
-        print("   Please set ALKHIDMAT_ZIP_PATH environment variable or place the ZIP file in the expected location.")
-        print("   The server will start, but RAG queries will fail until the knowledge base is built.")
-        return
-    
+
+    zip_available = Path(ZIP_PATH).exists()
+
     try:
-        # Check if documents exist in Supabase
         supabase = get_supabase_client()
         if supabase:
             result = supabase.table("documents").select("doc_id", count="exact").limit(1).execute()
             doc_count = result.count if hasattr(result, 'count') else len(result.data) if result.data else 0
-            
+
             if doc_count > 0:
-                print(f"✓ Knowledge base found in Supabase ({doc_count} documents).")
-                
-                # Only check for updates on a weekly basis
-                if _should_check_for_updates():
-                    print(f"  Checking for new documents in ZIP file (weekly check)...")
-                    # Run incremental update to add any new documents
+                print(f"[OK] Knowledge base found in Supabase ({doc_count} documents).")
+
+                if zip_available and _should_check_for_updates():
+                    print("  Checking for new documents in ZIP file (weekly check)...")
                     try:
                         stats = rag_module.add_documents_from_zip_incremental(ZIP_PATH, reindex_existing=False)
                         if stats["added"] > 0:
-                            print(f"✓ Added {stats['added']} new document(s) to knowledge base")
+                            print(f"[OK] Added {stats['added']} new document(s) to knowledge base")
                         if stats["skipped"] > 0:
                             print(f"  Skipped {stats['skipped']} existing document(s)")
                         if stats["failed"] > 0:
-                            print(f"⚠️ Failed to add {stats['failed']} document(s)")
+                            print(f"[WARN] Failed to add {stats['failed']} document(s)")
                     except Exception as e:
-                        print(f"⚠️ Error during incremental update: {e}")
+                        print(f"[WARN] Error during incremental update: {e}")
                         print("   Knowledge base exists, but new documents may not have been added.")
+                elif not zip_available:
+                    print("  ZIP not present; using existing Supabase knowledge base only.")
                 else:
-                    print(f"  KB update check skipped (weekly schedule)")
+                    print("  KB update check skipped (weekly schedule)")
                 return
         else:
             print("  Supabase client not initialized. Skipping knowledge base check.")
@@ -1993,14 +2000,17 @@ def _ensure_index_exists():
         print(f"  Could not check Supabase documents: {e}")
         print("   The server will start, but RAG queries may fail if the knowledge base is not built.")
         return
-    
-    # No documents found, need to build from scratch
-    print(f"  Knowledge base not found in Supabase. Building now...")
+
+    if not zip_available:
+        print(f"  ZIP file not found at {ZIP_PATH}")
+        print("   No documents in Supabase and no ZIP to build from.")
+        print("   Upload the knowledge base ZIP or populate Supabase before deploying.")
+        return
+
+    print("  Knowledge base not found in Supabase. Building now...")
     try:
-        # Build from scratch (not incremental since there's nothing to increment)
         rag_module.build_alkhidmat_rag(ZIP_PATH, clear_existing=False, incremental=False)
-        print(f"✓ Knowledge base built successfully in Supabase")
-        # Update timestamp after initial build
+        print("[OK] Knowledge base built successfully in Supabase")
         timestamp_file = Path(".kb_last_check.json")
         timestamp_file.write_text(json.dumps({
             "last_check": datetime.now().isoformat()
@@ -2022,7 +2032,7 @@ async def _startup():
     try:
         from RAG_supabase import DomainClassifier
         DomainClassifier.initialize_domain_embeddings()
-        print("[STARTUP] ✓ Domain embeddings ready", flush=True)
+        print("[STARTUP] [OK] Domain embeddings ready", flush=True)
     except Exception as e:
         print(f"[STARTUP]   Could not pre-initialize domain embeddings: {e}", flush=True)
     
@@ -2031,13 +2041,13 @@ async def _startup():
     try:
         from RAG_supabase import get_embedder
         get_embedder()
-        print("[STARTUP] ✓ Embedding model ready", flush=True)
+        print("[STARTUP] [OK] Embedding model ready", flush=True)
     except Exception as e:
         print(f"[STARTUP]   Could not pre-load embedding model: {e}", flush=True)
 
     # ── Auto-resolve inactive tickets background task ────────────────────────
     asyncio.create_task(_auto_resolve_inactive_tickets())
-    print("[STARTUP] ✓ Auto-resolve background task started", flush=True)
+    print("[STARTUP] [OK] Auto-resolve background task started", flush=True)
 
 
 async def _auto_resolve_inactive_tickets():
