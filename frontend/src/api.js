@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://fyp-fatima-production-f9d9.up.railway.app';
 
 // Helper to get auth headers
 function getAuthHeaders() {
