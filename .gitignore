@@ -15,3 +15,5 @@ frontend/.env
 # KB update check timestamp (local state)
 .kb_last_check.json
 .deepeval/
+api/fypp-ea6b9-firebase-adminsdk-fbsvc-a3a0760c66.json
+api/fypp-ea6b9-firebase-adminsdk-fbsvc-a3a0760c66.json
